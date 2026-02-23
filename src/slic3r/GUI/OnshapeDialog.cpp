@@ -83,6 +83,8 @@ void OnshapeSettingsDialog::on_save(wxCommandEvent &)
 // OnshapeDialog
 // ---------------------------------------------------------------------------
 
+OnshapeDialog::~OnshapeDialog() { *m_alive = false; }
+
 OnshapeDialog::OnshapeDialog(wxWindow *parent)
     : DPIDialog(parent, wxID_ANY, _L("Add from Onshape"), wxDefaultPosition,
                 parent->FromDIP(wxSize(560, 400)), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER)
@@ -192,10 +194,11 @@ void OnshapeDialog::refresh_documents()
     OnshapeCredentials creds = load_credentials();
 
     // Run on background thread; post result back to UI thread
-    std::thread([this, creds]() {
+    std::thread([this, creds, alive = m_alive]() {
         OnshapeClient::get_recent_documents(
-            creds, [this](std::vector<OnshapeDocument> docs, std::string error) {
-                wxTheApp->CallAfter([this, docs = std::move(docs), error = std::move(error)]() {
+            creds, [this, alive](std::vector<OnshapeDocument> docs, std::string error) {
+                wxTheApp->CallAfter([this, alive, docs = std::move(docs), error = std::move(error)]() {
+                    if (!*alive) return;
                     if (!error.empty()) {
                         set_status(wxString::FromUTF8(error));
                         wxMessageBox(wxString::FromUTF8(error), _L("Onshape Error"),
@@ -245,12 +248,13 @@ void OnshapeDialog::load_parts_for(long doc_index)
                                 wxString::FromUTF8(doc.name)),
                true);
 
-    std::thread([this, doc, creds]() {
+    std::thread([this, doc, creds, alive = m_alive]() {
         OnshapeClient::get_part_studios(
             creds, doc.id, doc.wid,
-            [this, doc](std::vector<OnshaperPart> parts, std::string error) {
+            [this, doc, alive](std::vector<OnshaperPart> parts, std::string error) {
                 wxTheApp->CallAfter(
-                    [this, doc, parts = std::move(parts), error = std::move(error)]() {
+                    [this, alive, doc, parts = std::move(parts), error = std::move(error)]() {
+                        if (!*alive) return;
                         set_status({});
                         if (!error.empty()) {
                             wxMessageBox(wxString::FromUTF8(error), _L("Onshape Error"),
@@ -303,11 +307,12 @@ void OnshapeDialog::on_import(wxCommandEvent &)
                                 wxString::FromUTF8(part.name)),
                true);
 
-    std::thread([this, part, creds]() {
+    std::thread([this, part, creds, alive = m_alive]() {
         OnshapeClient::export_stl(
-            creds, part, [this, part](std::string stl_bytes, std::string error) {
-                wxTheApp->CallAfter([this, part, stl_bytes = std::move(stl_bytes),
+            creds, part, [this, part, alive](std::string stl_bytes, std::string error) {
+                wxTheApp->CallAfter([this, alive, part, stl_bytes = std::move(stl_bytes),
                                      error = std::move(error)]() {
+                    if (!*alive) return;
                     set_status({});
                     if (!error.empty()) {
                         m_import_btn->Enable();

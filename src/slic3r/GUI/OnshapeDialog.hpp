@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,7 @@ class OnshapeDialog : public DPIDialog
 {
 public:
     OnshapeDialog(wxWindow *parent);
+    ~OnshapeDialog();
 
     void on_dpi_changed(const wxRect &suggested_rect) override {}
 
@@ -51,6 +53,11 @@ private:
         OnshaperPart    part;
     };
     std::vector<ListEntry> m_entries;
+
+    // Lifetime sentinel: background threads capture this by value and check
+    // *m_alive before touching `this`, guarding against use-after-free when
+    // the dialog is closed while a network request is in flight.
+    std::shared_ptr<bool> m_alive{std::make_shared<bool>(true)};
 
     OnshapeCredentials load_credentials() const;
     void               refresh_documents();
