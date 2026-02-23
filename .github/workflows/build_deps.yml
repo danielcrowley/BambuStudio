@@ -47,7 +47,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Get the date on Ubuntu and macOS
-        if: !startsWith(inputs.os, 'windows')
+        if: ${{ !startsWith(inputs.os, 'windows') }}
         run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_ENV
         shell: bash
 
