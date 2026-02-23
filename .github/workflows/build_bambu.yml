@@ -37,7 +37,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Get the version and date on Ubuntu and macOS
-        if: inputs.os != 'windows-latest'
+        if: !startsWith(inputs.os, 'windows')
         run: |
           ver_pure=$(grep 'set(SLIC3R_VERSION' version.inc | cut -d '"' -f2)
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -51,7 +51,7 @@ jobs:
         shell: bash
 
       - name: Get the version and date on Windows
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         run: |
           $date = Get-Date -Format 'yyyyMMdd'
           $ref = "${{ github.ref }}"
@@ -114,15 +114,15 @@ jobs:
 
   # Windows
       - name: setup MSVC
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         uses: microsoft/setup-msbuild@v2
 
       - name: Install sccache
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         uses: mozilla-actions/sccache-action@v0.0.5
 
       - name: Cache choco packages
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         id: choco-cache
         uses: actions/cache@v5
         with:
@@ -133,14 +133,14 @@ jobs:
           key: choco-win-nsis-pkgconfig-v1
 
       - name: Install nsis and pkgconfig
-        if: inputs.os == 'windows-latest' && steps.choco-cache.outputs.cache-hit != 'true'
+        if: startsWith(inputs.os, 'windows') && steps.choco-cache.outputs.cache-hit != 'true'
         run: |
           dir "C:/Program Files (x86)/Windows Kits/10/Include"
           choco install nsis
           choco install pkgconfiglite
 
       - name: Build slicer Win
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         working-directory: ${{ github.workspace }}
         env:
           SCCACHE_GHA_ENABLED: "true"
@@ -151,25 +151,25 @@ jobs:
           cmake --build . --target install --config Release -- -m
 
       # - name: Create installer Win
-      #   if: inputs.os == 'windows-latest'
+      #   if: startsWith(inputs.os, 'windows')
       #   working-directory: ${{ github.workspace }}/build
       #   run: |
       #     cpack -G NSIS
 
       - name: Pack app
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         working-directory: ${{ github.workspace }}
         shell: cmd
         run: '"C:/Program Files/7-Zip/7z.exe" a -tzip BambuStudio_Windows_${{ env.ver }}_portable.zip ${{ github.workspace }}/install-dir'
 
       # - name: Pack PDB
-      #   if: inputs.os == 'windows-latest'
+      #   if: startsWith(inputs.os, 'windows')
       #   working-directory: ${{ github.workspace }}/build/src/Release
       #   shell: cmd
       #   run: '"C:/Program Files/7-Zip/7z.exe" a -m0=lzma2 -mx9 Debug_PDB_${{ env.ver }}_for_developers_only.7z  *.pdb'
 
       - name: Upload artifacts Win zip
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         uses: actions/upload-artifact@v6
         with:
           name: BambuStudio_Windows_${{ env.ver }}_portable

@@ -43,23 +43,23 @@ jobs:
           save-always: true
 
       - name: setup dev on Windows
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         uses: microsoft/setup-msbuild@v2
 
       - name: Get the date on Ubuntu and macOS
-        if: inputs.os != 'windows-latest'
+        if: !startsWith(inputs.os, 'windows')
         run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_ENV
         shell: bash
 
       - name: Get the date on Windows
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         run: echo "date=$(Get-Date -Format 'yyyyMMdd')" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
         shell: pwsh
 
 
       # Build Dependencies
       - name: Build on Windows
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         working-directory: ${{ github.workspace }}
         run: |
             choco install strawberryperl
@@ -71,7 +71,7 @@ jobs:
             msbuild /m ALL_BUILD.vcxproj
 
       - name: pack deps on Windows
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         working-directory: ${{ github.workspace }}
         run: Compress-Archive -Path "${{ github.workspace }}\deps\build\BambuStudio_dep\*" -DestinationPath "${{ github.workspace }}\deps\build\BambuStudio_dep_win64_${{ env.date }}_vs2022.zip"
         shell: pwsh
@@ -162,7 +162,7 @@ jobs:
         run: rm -rf ${{ github.workspace }}/deps/build/BambuStudio_dep_mac_${{ inputs.arch }}*.tar.gz
 
       - name: Upload Windows artifacts
-        if: inputs.os == 'windows-latest'
+        if: startsWith(inputs.os, 'windows')
         uses: actions/upload-artifact@v6
         with:
           name: BambuStudio_dep_win64_${{ env.date }}
