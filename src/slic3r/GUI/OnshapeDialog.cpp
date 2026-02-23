@@ -85,7 +85,7 @@ void OnshapeSettingsDialog::on_save(wxCommandEvent &)
 
 OnshapeDialog::OnshapeDialog(wxWindow *parent)
     : DPIDialog(parent, wxID_ANY, _L("Add from Onshape"), wxDefaultPosition,
-                wxSize(FromDIP(560), FromDIP(400)), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER)
+                parent->FromDIP(wxSize(560, 400)), wxCAPTION | wxCLOSE_BOX | wxRESIZE_BORDER)
 {
     SetBackgroundColour(*wxWHITE);
 
