@@ -117,8 +117,23 @@ jobs:
         if: inputs.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
 
-      - name: Install nsis and pkgconfig
+      - name: Install sccache
         if: inputs.os == 'windows-latest'
+        uses: mozilla-actions/sccache-action@v0.0.5
+
+      - name: Cache choco packages
+        if: inputs.os == 'windows-latest'
+        id: choco-cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            C:\ProgramData\chocolatey\lib\nsis
+            C:\ProgramData\chocolatey\lib\pkgconfiglite
+            C:\ProgramData\chocolatey\bin
+          key: choco-win-nsis-pkgconfig-v1
+
+      - name: Install nsis and pkgconfig
+        if: inputs.os == 'windows-latest' && steps.choco-cache.outputs.cache-hit != 'true'
         run: |
           dir "C:/Program Files (x86)/Windows Kits/10/Include"
           choco install nsis
@@ -127,10 +142,12 @@ jobs:
       - name: Build slicer Win
         if: inputs.os == 'windows-latest'
         working-directory: ${{ github.workspace }}
+        env:
+          SCCACHE_GHA_ENABLED: "true"
         run: |
           mkdir build
           cd build
-          cmake .. -G "Visual Studio 17 2022" -A X64 -DBBL_RELEASE_TO_PUBLIC=1 -DBBL_INTERNAL_TESTING=0 -DCMAKE_PREFIX_PATH="${{ github.workspace }}\deps\build\BambuStudio_dep\usr\local" -DCMAKE_INSTALL_PREFIX="../install-dir" -DCMAKE_BUILD_TYPE=Release -DWIN10SDK_PATH="C:/Program Files (x86)/Windows Kits/10/Include/10.0.22000.0"
+          cmake .. -G "Visual Studio 17 2022" -A X64 -DBBL_RELEASE_TO_PUBLIC=1 -DBBL_INTERNAL_TESTING=0 -DCMAKE_PREFIX_PATH="${{ github.workspace }}\deps\build\BambuStudio_dep\usr\local" -DCMAKE_INSTALL_PREFIX="../install-dir" -DCMAKE_BUILD_TYPE=Release -DWIN10SDK_PATH="C:/Program Files (x86)/Windows Kits/10/Include/10.0.22000.0" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           cmake --build . --target install --config Release -- -m
 
       # - name: Create installer Win

@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          lfs: 'true'
+          lfs: 'false'  # only hashing deps/** for cache key; LFS objects not needed here
         
       - name: set outputs
         id: set_outputs

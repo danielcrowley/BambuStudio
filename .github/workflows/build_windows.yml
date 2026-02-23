@@ -47,6 +47,6 @@ jobs:
     name: Build Windows
     uses: ./.github/workflows/build_check_cache.yml
     with:
-      os: windows-latest
+      os: windows-2022
       build-deps-only: ${{ inputs.build-deps-only || false }}
     secrets: inherit
