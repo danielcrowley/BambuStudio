@@ -24,5 +24,7 @@ install_*
 build_*/
 SVG
 Dockerfile
+Dockerfile.windows
 DockerBuild.sh
+DockerBuild_Win.ps1
 DockerRun.sh

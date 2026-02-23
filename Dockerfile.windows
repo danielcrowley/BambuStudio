@@ -1,0 +1,74 @@
+# escape=`
+# Windows Container Dockerfile for building BambuStudio
+#
+# Requirements:
+#   - Docker Desktop for Windows with Windows Containers mode enabled
+#   - Host OS: Windows 10/11 (with Hyper-V) or Windows Server 2019/2022
+#
+# Build the image:
+#   docker build -t bambustudio-build-win -f Dockerfile.windows .
+#
+# Extract the compiled artifacts after the build:
+#   docker create --name bbs-extract bambustudio-build-win
+#   docker cp bbs-extract:C:/BambuStudio/install-dir ./install-dir
+#   docker rm bbs-extract
+#
+# Or use the provided helper script:
+#   .\DockerBuild_Win.ps1 -ExtractArtifacts
+#
+# Note: This image is large (~25 GB) due to Visual Studio Build Tools.
+# Build times are long; use the helper script for dependency caching.
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install Chocolatey package manager
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
+    [System.Net.ServicePointManager]::SecurityProtocol = `
+        [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+    iex ((New-Object System.Net.WebClient).DownloadString( `
+        'https://community.chocolatey.org/install.ps1'))
+
+# Install Git, CMake, Strawberry Perl, and pkg-config
+# These match the prerequisites from the CI workflow (build_deps.yml)
+RUN choco install -y git --params '"/GitAndUnixToolsOnPath /NoAutoCrlf"'
+RUN choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+RUN choco install -y strawberryperl
+RUN choco install -y pkgconfiglite
+
+# Install Visual Studio Build Tools 2022 with the MSVC C++ toolchain
+# and the Windows 10 SDK 22000 (required by the CMake configuration).
+# Exit codes: 0 = success, 3010 = success + reboot required (safe to ignore in containers).
+RUN New-Item -ItemType Directory -Path C:\TEMP -Force | Out-Null; `
+    Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vs_buildtools.exe' `
+        -OutFile 'C:\TEMP\vs_buildtools.exe'; `
+    $proc = Start-Process -FilePath 'C:\TEMP\vs_buildtools.exe' `
+        -ArgumentList @( `
+            '--quiet', '--wait', '--norestart', '--nocache', `
+            '--add', 'Microsoft.VisualStudio.Workload.VCTools', `
+            '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', `
+            '--add', 'Microsoft.VisualStudio.Component.Windows10SDK.22000', `
+            '--add', 'Microsoft.VisualStudio.Component.VC.CMake.Project' `
+        ) -Wait -PassThru; `
+    Remove-Item 'C:\TEMP\vs_buildtools.exe'; `
+    if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { `
+        throw "Visual Studio Build Tools installation failed with exit code: $($proc.ExitCode)" `
+    }
+
+WORKDIR C:\BambuStudio
+
+# Copy the source tree (respects .dockerignore)
+COPY . .
+
+# Stage 1: Build third-party dependencies
+# The helper script writes a temporary batch file so that cmake and msbuild
+# can run inside a cmd.exe session that has the VS developer environment set up.
+RUN powershell -NoProfile -ExecutionPolicy Bypass -File C:\BambuStudio\docker\BuildWinDeps.ps1
+
+# Stage 2: Build BambuStudio application
+RUN powershell -NoProfile -ExecutionPolicy Bypass -File C:\BambuStudio\docker\BuildWinApp.ps1
+
+# Default command — open a PowerShell prompt so the image can be inspected
+# or used as a build environment interactively.
+CMD ["powershell", "-NoProfile"]
