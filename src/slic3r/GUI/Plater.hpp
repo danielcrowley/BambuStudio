@@ -338,6 +338,13 @@ public:
     int  get_3mf_file_count(std::vector<fs::path> paths);
     void add_file();
     void add_model(bool imperial_units = false, std::string fname = "");
+    void add_from_onshape();
+
+    struct OnshapeSource { std::string did, wid, eid, name; };
+    void set_onshape_source(const OnshapeSource &src);
+    const OnshapeSource *get_onshape_source() const;
+    void clear_onshape_source();
+
     void import_sl1_archive();
     void extract_config_from_project();
     void load_gcode();

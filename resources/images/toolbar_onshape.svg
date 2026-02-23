@@ -1,0 +1,13 @@
+<svg width="40" height="41" viewBox="0 0 40 41" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cloud shape -->
+  <path fill-rule="evenodd" clip-rule="evenodd"
+    d="M28 17.5C28 13.358 24.642 10 20.5 10C17.21 10 14.42 12.02 13.35 14.9C12.93 14.76 12.48 14.68 12 14.68C9.57 14.68 7.6 16.65 7.6 19.08C7.6 19.16 7.6 19.24 7.61 19.32C6.09 19.9 5 21.38 5 23.12C5 25.38 6.84 27.22 9.1 27.22H31.08C33.25 27.22 35 25.47 35 23.3C35 21.27 33.47 19.6 31.5 19.4C31.14 18.3 30.08 17.5 28.84 17.5H28Z"
+    fill="#2B3436"/>
+  <!-- Down arrow into box / import icon -->
+  <path fill-rule="evenodd" clip-rule="evenodd"
+    d="M20 19.5V25.5M20 25.5L17 22.5M20 25.5L23 22.5"
+    stroke="#00AE42" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- "O" letter mark for Onshape brand -->
+  <circle cx="20" cy="22" r="7" stroke="#00AE42" stroke-width="1.2" fill="none"/>
+  <text x="20" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#00AE42">O</text>
+</svg>

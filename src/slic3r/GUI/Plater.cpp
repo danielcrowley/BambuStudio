@@ -159,6 +159,7 @@
 #include "StepMeshDialog.hpp"
 #include "PurgeModeDialog.hpp"
 #include "FilamentMapDialog.hpp"
+#include "OnshapeDialog.hpp"
 
 #include "DeviceCore/DevFilaSystem.h"
 #include "DeviceCore/DevManager.h"
@@ -4404,6 +4405,8 @@ public:
 
     bool m_is_dark = false;
 
+    std::unique_ptr<Plater::OnshapeSource> m_onshape_source;
+
     priv(Plater *q, MainFrame *main_frame);
     ~priv();
 
@@ -4676,6 +4679,7 @@ public:
     bool warnings_dialog();
 
     void on_action_add(SimpleEvent&);
+    void on_action_add_from_onshape(SimpleEvent&);
     void on_action_add_plate(SimpleEvent&);
     void on_action_del_plate(SimpleEvent&);
     void on_action_split_objects(SimpleEvent&);
@@ -5144,6 +5148,7 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
 
         // 3DScene/Toolbar:
         view3D_canvas->Bind(EVT_GLTOOLBAR_ADD, &priv::on_action_add, this);
+        view3D_canvas->Bind(EVT_GLTOOLBAR_ADD_FROM_ONSHAPE, &priv::on_action_add_from_onshape, this);
         view3D_canvas->Bind(EVT_GLTOOLBAR_DELETE, [q](SimpleEvent&) { q->remove_selected(); });
         view3D_canvas->Bind(EVT_GLTOOLBAR_DELETE_ALL, [this](SimpleEvent&) { delete_all_objects_from_model(); });
 //        view3D_canvas->Bind(EVT_GLTOOLBAR_DELETE_ALL, [q](SimpleEvent&) { q->reset_with_confirm(); });
@@ -9801,6 +9806,12 @@ void Plater::priv::on_action_add(SimpleEvent&)
         //BBS open file in toolbar add
         q->add_file();
     }
+}
+
+void Plater::priv::on_action_add_from_onshape(SimpleEvent&)
+{
+    if (q != nullptr)
+        q->add_from_onshape();
 }
 
 //BBS: add plate from toolbar
@@ -15486,6 +15497,27 @@ void Plater::calib_VFA(const Calib_Params &params)
     }
 
     p->background_process.fff_print()->set_calib_params(params);
+}
+
+void Plater::add_from_onshape()
+{
+    GUI::OnshapeDialog dlg(this);
+    dlg.ShowModal();
+}
+
+void Plater::set_onshape_source(const OnshapeSource &src)
+{
+    p->m_onshape_source = std::make_unique<OnshapeSource>(src);
+}
+
+const Plater::OnshapeSource *Plater::get_onshape_source() const
+{
+    return p->m_onshape_source.get();
+}
+
+void Plater::clear_onshape_source()
+{
+    p->m_onshape_source.reset();
 }
 
 void Plater::import_sl1_archive()
