@@ -1419,12 +1419,34 @@ wxWindow* PreferencesDialog::create_general_page()
     auto item_auto_stop_liveview = create_item_checkbox(_L("Keep liveview when printing."), page, _L("By default, Liveview will pause after 15 minutes of inactivity on the computer. Check this box to disable this feature during printing."), 50, "auto_stop_liveview");
 
     auto title_onshape = create_item_title(_L("OnShape Integration"), page, "");
-    auto item_onshape_access_key = create_item_input(
-        _L("OnShape Access Key"), "", page,
-        _L("Your OnShape API Access Key from onshape.com/go/api-keys"),
-        "onshape_access_key",
-        [](wxString) {}
-    );
+    // Access Key — build manually; create_item_input() applies wxFILTER_DIGITS which rejects
+    // alphanumeric OnShape API key characters.
+    wxBoxSizer* item_onshape_access_key = nullptr;
+    {
+        wxBoxSizer* row = new wxBoxSizer(wxHORIZONTAL);
+        row->Add(0, 0, 0, wxEXPAND | wxLEFT, 23);
+        auto* lbl = new wxStaticText(page, wxID_ANY, _L("OnShape Access Key"));
+        lbl->SetForegroundColour(DESIGN_GRAY900_COLOR);
+        lbl->SetFont(::Label::Body_13);
+        lbl->SetToolTip(_L("Your OnShape API Access Key from onshape.com/go/api-keys"));
+        lbl->Wrap(-1);
+        row->Add(lbl, 0, wxALIGN_CENTER | wxALL, 3);
+        auto* txt = new wxTextCtrl(page, wxID_ANY,
+            wxString::FromUTF8(app_config->get("onshape_access_key")),
+            wxDefaultPosition, DESIGN_INPUT_SIZE, wxTE_PROCESS_ENTER);
+        txt->Bind(wxEVT_KILL_FOCUS, [this, txt](wxFocusEvent& e) {
+            app_config->set("onshape_access_key", txt->GetValue().ToUTF8().data());
+            app_config->save();
+            e.Skip();
+        });
+        txt->Bind(wxEVT_TEXT_ENTER, [this, txt](wxCommandEvent& e) {
+            app_config->set("onshape_access_key", txt->GetValue().ToUTF8().data());
+            app_config->save();
+            e.Skip();
+        });
+        row->Add(txt, 1, wxALIGN_CENTER | wxALL, 3);
+        item_onshape_access_key = row;
+    }
 
     // Secret Key — must be password-masked (wxTE_PASSWORD).
     // create_item_input() doesn't support wxTE_PASSWORD, so build manually.
