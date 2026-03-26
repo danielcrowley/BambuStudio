@@ -110,6 +110,7 @@
 #include "../Utils/PresetUpdater.hpp"
 #include "../Utils/Process.hpp"
 #include "../Utils/HelioDragon.hpp"
+#include "../Utils/OnShape.hpp"
 #include "RemovableDriveManager.hpp"
 #include "InstanceCheck.hpp"
 #include "NotificationManager.hpp"
@@ -4646,6 +4647,7 @@ public:
     void export_gcode(fs::path output_path, bool output_path_on_removable_media, PrintHostJob upload_job);
 
     void reload_from_disk();
+    void reload_from_onshape();
     bool replace_volume_with_stl(int object_idx, int volume_idx, const fs::path& new_path, const std::string& snapshot = "");
     void replace_with_stl();
     void reload_all_from_disk();
@@ -4768,6 +4770,7 @@ public:
     bool can_set_instance_to_object() const;
     bool can_mirror() const;
     bool can_reload_from_disk() const;
+    bool can_reload_from_onshape() const;
     //BBS:
     bool can_fillcolor() const;
     bool has_assemble_view() const;
@@ -8883,6 +8886,69 @@ void Plater::priv::reload_all_from_disk()
     for (unsigned int idx : curr_idxs) {
         selection.add(idx, false);
     }
+}
+
+void Plater::priv::reload_from_onshape()
+{
+    // Find the selected object with OnShape metadata
+    const Selection& sel = get_selection();
+    if (sel.get_volume_idxs().empty()) return;
+
+    const GLVolume* v = sel.get_volume(*sel.get_volume_idxs().begin());
+    int o_idx = v->object_idx();
+    int vol_idx = v->volume_idx();
+    if (o_idx < 0 || o_idx >= (int)model.objects.size()) return;
+
+    ModelObject* obj = model.objects[o_idx];
+    if (!obj->onshape_source.has_value()) return;
+
+    OnShapePart part;
+    part.doc_id       = obj->onshape_source->doc_id;
+    part.workspace_id = obj->onshape_source->workspace_id;
+    part.element_id   = obj->onshape_source->element_id;
+    part.part_id      = obj->onshape_source->part_id;
+    part.part_name    = obj->onshape_source->part_name;
+
+    auto tmp = boost::filesystem::temp_directory_path()
+             / boost::filesystem::unique_path("onshape_reload_%%%%-%%%%-%%%%");
+
+    std::string tmp_str = tmp.string();
+
+    OnShape::exportPart(part, tmp_str,
+        [this, o_idx, vol_idx, tmp](std::string path) {
+            wxGetApp().CallAfter([this, o_idx, vol_idx, path, tmp]() {
+                // Take snapshot for undo before modifying
+                Plater::TakeSnapshot snapshot(q, "Reload from OnShape");
+
+                bool ok = replace_volume_with_stl(o_idx, vol_idx, fs::path(path), "");
+                boost::filesystem::remove(tmp);
+                if (!ok) {
+                    wxMessageBox(_L("Failed to reload part from OnShape."),
+                                 _L("Reload Error"), wxOK | wxICON_ERROR);
+                    return;
+                }
+
+                update();
+                for (size_t i = 0; i < model.objects.size(); ++i) {
+                    view3D->get_canvas3d()->update_instance_printable_state_for_object(i);
+                }
+            });
+        },
+        [tmp](std::string err) {
+            wxGetApp().CallAfter([err, tmp]() {
+                boost::filesystem::remove(tmp.string() + ".stl");
+                boost::filesystem::remove(tmp);
+                if (err.find("404") != std::string::npos || err.find("not found") != std::string::npos) {
+                    wxMessageBox(
+                        _L("This part no longer exists in OnShape at its original location."),
+                        _L("OnShape Error"), wxOK | wxICON_ERROR);
+                } else {
+                    wxMessageBox(wxString::FromUTF8(err),
+                                 _L("OnShape Error"), wxOK | wxICON_ERROR);
+                }
+            });
+        }
+    );
 }
 
 //BBS: add no_slice logic
@@ -13319,6 +13385,21 @@ bool Plater::priv::can_reload_from_disk() const
     paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
 
     return !paths.empty();
+}
+
+bool Plater::priv::can_reload_from_onshape() const
+{
+    // Enabled only when exactly one volume is selected and its object has OnShape metadata
+    const Selection& sel = get_selection();
+    if (sel.get_volume_idxs().size() != 1)
+        return false;
+
+    const GLVolume* v = sel.get_volume(*sel.get_volume_idxs().begin());
+    int o_idx = v->object_idx();
+    if (o_idx < 0 || o_idx >= (int)model.objects.size())
+        return false;
+
+    return model.objects[o_idx]->onshape_source.has_value();
 }
 
 void Plater::priv::update_publish_dialog_status(wxString &msg, int percent)
@@ -17918,6 +17999,11 @@ void Plater::reload_from_disk()
     p->reload_from_disk();
 }
 
+void Plater::reload_from_onshape()
+{
+    p->reload_from_onshape();
+}
+
 void Plater::replace_with_stl()
 {
     p->replace_with_stl();
@@ -20921,6 +21007,7 @@ bool Plater::can_copy_to_clipboard() const
 bool Plater::can_undo() const { return IsShown() && p->is_view3D_shown() && p->undo_redo_stack().has_undo_snapshot(); }
 bool Plater::can_redo() const { return IsShown() && p->is_view3D_shown() && p->undo_redo_stack().has_redo_snapshot(); }
 bool Plater::can_reload_from_disk() const { return p->can_reload_from_disk(); }
+bool Plater::can_reload_from_onshape() const { return p->can_reload_from_onshape(); }
 //BBS
 bool Plater::can_fillcolor() const { return p->can_fillcolor(); }
 bool Plater::has_assmeble_view() const { return p->has_assemble_view(); }

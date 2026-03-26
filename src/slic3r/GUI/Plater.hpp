@@ -484,6 +484,7 @@ public:
     void publish_project();
 
     void reload_from_disk();
+    void reload_from_onshape();
     void replace_with_stl();
     void reload_all_from_disk();
     bool has_toolpaths_to_export() const;
@@ -686,6 +687,7 @@ public:
     bool can_undo() const;
     bool can_redo() const;
     bool can_reload_from_disk() const;
+    bool can_reload_from_onshape() const;
     bool can_replace_with_stl() const;
     bool can_mirror() const;
     bool can_split(bool to_objects) const;
