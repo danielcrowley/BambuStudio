@@ -2102,12 +2102,28 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 // config data has been found, this model was saved using slic3r pe
 
                 // apply object's name and config data
+                auto ensure_onshape = [](ModelObject* obj) -> OnShapeMetadata& {
+                    if (!obj->onshape_source.has_value())
+                        obj->onshape_source = OnShapeMetadata{};
+                    return *obj->onshape_source;
+                };
                 for (const Metadata& metadata : obj_metadata->second.metadata) {
                     if (metadata.key == "name")
                         model_object->name = metadata.value;
                     //BBS: add module name
                     else if (metadata.key == "module")
                         model_object->module_name = metadata.value;
+                    // OnShape source tracking
+                    else if (metadata.key == "onshape_doc_id")
+                        ensure_onshape(model_object).doc_id = metadata.value;
+                    else if (metadata.key == "onshape_workspace_id")
+                        ensure_onshape(model_object).workspace_id = metadata.value;
+                    else if (metadata.key == "onshape_element_id")
+                        ensure_onshape(model_object).element_id = metadata.value;
+                    else if (metadata.key == "onshape_part_id")
+                        ensure_onshape(model_object).part_id = metadata.value;
+                    else if (metadata.key == "onshape_part_name")
+                        ensure_onshape(model_object).part_name = metadata.value;
                     else
                         model_object->config.set_deserialize(metadata.key, metadata.value, config_substitutions);
                 }
@@ -7827,6 +7843,16 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 //BBS: store object's module name
                 if (!obj->module_name.empty())
                     stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"module\" " << VALUE_ATTR << "=\"" << xml_escape(obj->module_name) << "\"/>\n";
+
+                // stores OnShape source metadata (if present)
+                if (obj->onshape_source.has_value()) {
+                    const OnShapeMetadata& os = *obj->onshape_source;
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"onshape_doc_id\" "       << VALUE_ATTR << "=\"" << xml_escape(os.doc_id)       << "\"/>\n";
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"onshape_workspace_id\" " << VALUE_ATTR << "=\"" << xml_escape(os.workspace_id) << "\"/>\n";
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"onshape_element_id\" "   << VALUE_ATTR << "=\"" << xml_escape(os.element_id)   << "\"/>\n";
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"onshape_part_id\" "      << VALUE_ATTR << "=\"" << xml_escape(os.part_id)      << "\"/>\n";
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"onshape_part_name\" "    << VALUE_ATTR << "=\"" << xml_escape(os.part_name)    << "\"/>\n";
+                }
 
                 // stores object's config data
                 for (const std::string& key : obj->config.keys()) {
