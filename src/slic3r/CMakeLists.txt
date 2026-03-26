@@ -240,6 +240,8 @@ set(SLIC3R_GUI_SOURCES
     GUI/GUI_Colors.cpp
     GUI/GUI_Factories.cpp
     GUI/GUI_Factories.hpp
+    GUI/OnShapePartPicker.cpp
+    GUI/OnShapePartPicker.hpp
     GUI/GUI_ObjectList.cpp
     GUI/GUI_ObjectList.hpp
     GUI/GUI_ObjectLayers.cpp
