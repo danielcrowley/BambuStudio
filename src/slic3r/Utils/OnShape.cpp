@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <memory>
 #include <mutex>
+#include <atomic>
 
 namespace Slic3r {
 
@@ -56,7 +57,7 @@ void OnShape::fetchRecentParts(
 
                 auto all_parts  = std::make_shared<std::vector<OnShapePart>>();
                 auto mtx        = std::make_shared<std::mutex>();
-                auto remaining  = std::make_shared<int>((int)items.size());
+                auto remaining  = std::make_shared<std::atomic<int>>((int)items.size());
 
                 auto finish = [all_parts, on_success]() {
                     std::sort(all_parts->begin(), all_parts->end(),
@@ -139,8 +140,12 @@ void OnShape::exportPart(
     std::string body_json = "{\"partIds\":[\"" + part.part_id
                           + "\"],\"format\":\"STL\",\"units\":\"millimeter\"}";
 
+    // Cache credentials before entering callback (called from worker thread)
+    std::string ak = accessKey();
+    std::string sk = secretKey();
+
     Http::post(url)
-        .auth_basic(accessKey(), secretKey())
+        .auth_basic(ak, sk)
         .set_post_body(body_json)
         .header("Content-Type", "application/json")
         .timeout_max(30)
@@ -196,7 +201,7 @@ void OnShape::uploadAttachment(
 
     std::string create_url = BASE_URL + "/api/blobelements/d/" + doc_id + "/w/" + workspace_id;
     std::string filename   = boost::filesystem::path(file_path).filename().string();
-    std::string body_json  = "{\"name\":\"" + filename + "\"}";
+    std::string body_json  = "{\"name\":\"" + filename + "\",\"contentType\":\"application/octet-stream\"}";
 
     std::string ak = accessKey();
     std::string sk = secretKey();
@@ -218,16 +223,11 @@ void OnShape::uploadAttachment(
                     on_done(false, "No uploadUrl in OnShape blob response");
                     return;
                 }
-                // Read file into memory for PUT
-                std::ifstream fin(file_path, std::ios::binary);
-                std::string file_data((std::istreambuf_iterator<char>(fin)),
-                                       std::istreambuf_iterator<char>());
-
-                // Use set_put_body via a path — but we have data in memory, so use
-                // set_post_body on Http::put (Http::put uses POST body mechanism for body data)
-                Http::put(upload_url)
+                // Use Http::put2() with set_post_body to avoid CURL mode conflict
+                // Http::put2() uses CURLOPT_CUSTOMREQUEST instead of CURLOPT_UPLOAD
+                Http::put2(upload_url)
                     .header("Content-Type", "application/octet-stream")
-                    .set_post_body(file_data)
+                    .set_post_body(boost::filesystem::path(file_path))
                     .timeout_max(30)
                     .on_complete([on_done](std::string, unsigned s) {
                         bool ok = (s == 200 || s == 204);
