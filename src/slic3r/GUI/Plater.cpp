@@ -8,7 +8,6 @@
 #include <map>
 #include <regex>
 #include <future>
-#include <thread>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/path.hpp>
@@ -8892,11 +8891,11 @@ void Plater::priv::reload_all_from_disk()
 
 static void upload_onshape_attachments(const std::string& file_path, const Slic3r::Model& model)
 {
-    // Collect unique (docId -> workspaceId) pairs from all objects
-    std::map<std::string, std::string> docs;
+    // Collect unique (doc_id, workspace_id) pairs from all objects
+    std::set<std::pair<std::string, std::string>> docs;
     for (const Slic3r::ModelObject* obj : model.objects) {
         if (obj->onshape_source.has_value()) {
-            docs[obj->onshape_source->doc_id] = obj->onshape_source->workspace_id;
+            docs.emplace(obj->onshape_source->doc_id, obj->onshape_source->workspace_id);
         }
     }
     if (docs.empty()) return;
