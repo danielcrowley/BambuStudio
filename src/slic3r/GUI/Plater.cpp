@@ -8945,7 +8945,7 @@ void Plater::priv::reload_from_onshape()
     part.part_name    = obj->onshape_source->part_name;
 
     auto tmp = boost::filesystem::temp_directory_path()
-             / boost::filesystem::unique_path("onshape_reload_%%%%-%%%%-%%%%");
+             / boost::filesystem::unique_path("onshape_reload_%%%%-%%%%-%%%%.3mf");
 
     std::string tmp_str = tmp.string();
 
@@ -9901,9 +9901,15 @@ void Plater::priv::on_process_completed(SlicingProcessCompletedEvent &evt)
 void Plater::priv::on_action_add(SimpleEvent&)
 {
     if (q != nullptr) {
-        //q->add_model();
-        //BBS open file in toolbar add
-        q->add_file();
+        std::string src = wxGetApp().app_config->get("onshape_add_part_last_source");
+        if (src == "onshape") {
+            if (wxGetApp().mainframe)
+                wxGetApp().mainframe->trigger_add_from_onshape();
+        } else {
+            //q->add_model();
+            //BBS open file in toolbar add
+            q->add_file();
+        }
     }
 }
 

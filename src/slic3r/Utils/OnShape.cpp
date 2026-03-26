@@ -48,6 +48,10 @@ void OnShape::fetchRecentParts(
             }
             try {
                 auto docs_json = nlohmann::json::parse(body);
+                if (!docs_json.contains("items")) {
+                    on_error("Unexpected API response from OnShape");
+                    return;
+                }
                 auto& items = docs_json["items"];
 
                 if (items.empty()) {
@@ -176,6 +180,7 @@ void OnShape::exportPart(
             // strategy defaults to SaveStrategy::Zip64 per StoreParams default constructor
             if (!store_bbs_3mf(params)) {
                 boost::filesystem::remove(stl_path);
+                boost::filesystem::remove(out_path);
                 on_error("Failed to convert STL to 3MF");
                 return;
             }
