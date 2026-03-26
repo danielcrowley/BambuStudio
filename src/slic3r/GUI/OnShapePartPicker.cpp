@@ -4,6 +4,9 @@
 #include <wx/stattext.h>
 #include <wx/button.h>
 #include <wx/sizer.h>
+#include <wx/weakref.h>
+#include <algorithm>
+#include <boost/log/trivial.hpp>
 
 namespace Slic3r { namespace GUI {
 
@@ -28,18 +31,21 @@ void OnShapePartPicker::ShowAt(wxPoint screen_pos)
     } else {
         show_loading();
         // Fetch parts — callback runs on HTTP worker thread, post to UI thread
+        wxWeakRef<OnShapePartPicker> weak(this);
         OnShape::fetchRecentParts(
-            [this](std::vector<OnShapePart> parts) {
-                wxGetApp().CallAfter([this, parts = std::move(parts)]() {
+            [weak](std::vector<OnShapePart> parts) {
+                wxGetApp().CallAfter([weak, parts = std::move(parts)]() mutable {
+                    if (!weak) return;
                     if (parts.empty())
-                        show_empty();
+                        weak->show_empty();
                     else
-                        show_parts(parts);
+                        weak->show_parts(parts);
                 });
             },
-            [this](std::string err) {
-                wxGetApp().CallAfter([this, err = std::move(err)]() {
-                    show_error(err);
+            [weak](std::string err) {
+                wxGetApp().CallAfter([weak, err = std::move(err)]() mutable {
+                    if (!weak) return;
+                    weak->show_error(err);
                 });
             }
         );
@@ -53,7 +59,6 @@ void OnShapePartPicker::ShowAt(wxPoint screen_pos)
 
 void OnShapePartPicker::show_loading()
 {
-    m_sizer->Clear(true);
     m_sizer->Add(new wxStaticText(this, wxID_ANY, _L("Loading OnShape parts\u2026")),
                  0, wxALL, 8);
     Layout();
@@ -80,8 +85,9 @@ void OnShapePartPicker::show_empty()
     Fit();
 }
 
-void OnShapePartPicker::show_error(const std::string& /*msg*/)
+void OnShapePartPicker::show_error(const std::string& msg)
 {
+    BOOST_LOG_TRIVIAL(error) << "OnShapePartPicker: fetch failed: " << msg;
     m_sizer->Clear(true);
     m_sizer->Add(new wxStaticText(this, wxID_ANY,
         _L("Couldn't reach OnShape.\nCheck your connection.")),
@@ -104,7 +110,7 @@ void OnShapePartPicker::show_parts(const std::vector<OnShapePart>& parts)
     m_sizer->Add(new wxStaticText(this, wxID_ANY, _L("Recent OnShape Parts")),
                  0, wxLEFT | wxTOP | wxRIGHT, 8);
 
-    for (size_t i = 0; i < parts.size(); ++i) {
+    for (size_t i = 0; i < std::min(parts.size(), size_t(5)); ++i) {
         auto* btn = new wxButton(this, wxID_ANY,
             wxString::FromUTF8(parts[i].part_name),
             wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
