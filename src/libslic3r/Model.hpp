@@ -337,17 +337,22 @@ enum class ModelObjectCutAttribute : int { KeepUpper, KeepLower, FlipUpper, Flip
 using ModelObjectCutAttributes = enum_bitmask<ModelObjectCutAttribute>;
 ENABLE_ENUM_BITMASK_OPERATORS(ModelObjectCutAttribute);
 
-struct OnShapeMetadata {
+struct OnShapeMetadata
+{
     std::string doc_id;
     std::string workspace_id;
     std::string element_id;
     std::string part_id;
-    std::string part_name;
+    std::string part_name;  // display name, not required for API calls
 
-    bool is_valid() const {
+    bool is_valid() const
+    {
         return !doc_id.empty() && !workspace_id.empty() &&
                !element_id.empty() && !part_id.empty();
     }
+
+    template<class Archive>
+    void serialize(Archive &ar) { ar(doc_id, workspace_id, element_id, part_id, part_name); }
 };
 
 // A printable object, possibly having multiple print volumes (each with its own set of parameters and materials),
@@ -698,7 +703,7 @@ private:
         ar(cereal::base_class<ObjectBase>(this));
         Internal::StaticSerializationWrapper<ModelConfigObject const> config_wrapper(config);
         Internal::StaticSerializationWrapper<LayerHeightProfile const> layer_heigth_profile_wrapper(layer_height_profile);
-        ar(name, module_name, input_file, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper,
+        ar(name, module_name, input_file, onshape_source, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper,
             sla_support_points, sla_points_status, sla_drain_holes, printable, origin_translation, brim_points,
             m_bounding_box, m_bounding_box_valid, m_raw_bounding_box, m_raw_bounding_box_valid, m_raw_mesh_bounding_box, m_raw_mesh_bounding_box_valid,
             cut_connectors, cut_id);
@@ -709,7 +714,7 @@ private:
         Internal::StaticSerializationWrapper<LayerHeightProfile> layer_heigth_profile_wrapper(layer_height_profile);
         // BBS: add backup, check modify
         SaveObjectGaurd gaurd(*this);
-        ar(name, module_name, input_file, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper,
+        ar(name, module_name, input_file, onshape_source, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper,
             sla_support_points, sla_points_status, sla_drain_holes, printable, origin_translation, brim_points,
             m_bounding_box, m_bounding_box_valid, m_raw_bounding_box, m_raw_bounding_box_valid, m_raw_mesh_bounding_box, m_raw_mesh_bounding_box_valid,
             cut_connectors, cut_id);
