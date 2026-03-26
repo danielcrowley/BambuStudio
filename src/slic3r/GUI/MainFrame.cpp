@@ -62,6 +62,9 @@
 #include "Widgets/WebView.hpp"
 #include "DailyTips.hpp"
 #include "FilamentMapDialog.hpp"
+#include "OnShapePartPicker.hpp"
+#include "slic3r/Utils/OnShape.hpp"
+#include "libslic3r/Model.hpp"
 
 #include "DeviceCore/DevManager.h"
 
@@ -687,7 +690,13 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
 
         if (evt.CmdDown() && evt.GetKeyCode() == 'I') {
             if (!can_add_models()) return;
-            if (m_plater) { m_plater->add_file(); }
+            if (m_plater) {
+                std::string src = wxGetApp().app_config->get("onshape_add_part_last_source");
+                if (src == "onshape")
+                    trigger_add_from_onshape();
+                else
+                    m_plater->add_file();
+            }
             return;
         }
         evt.Skip();
@@ -4366,6 +4375,50 @@ void SettingsDialog::on_dpi_changed(const wxRect& suggested_rect)
     SetMinSize(size);
     Fit();
     Refresh();
+}
+
+void MainFrame::trigger_add_from_onshape()
+{
+    if (!m_onshape_picker) {
+        m_onshape_picker = new OnShapePartPicker(this, [this](OnShapePart part) {
+            auto tmp = boost::filesystem::temp_directory_path()
+                     / (part.part_id + ".3mf");
+            OnShape::exportPart(part, tmp.string(),
+                [this, part, tmp](std::string path) {
+                    wxGetApp().CallAfter([this, path, part, tmp]() {
+                        std::vector<boost::filesystem::path> files = {
+                            boost::filesystem::path(path)
+                        };
+                        m_plater->load_files(files, LoadStrategy::LoadModel, false);
+                        // Tag the newly loaded object with OnShape metadata
+                        if (!m_plater->model().objects.empty()) {
+                            auto* obj = m_plater->model().objects.back();
+                            obj->onshape_source = OnShapeMetadata{
+                                part.doc_id, part.workspace_id,
+                                part.element_id, part.part_id, part.part_name
+                            };
+                        }
+                        boost::filesystem::remove(boost::filesystem::path(path));
+                    });
+                },
+                [this](std::string err) {
+                    wxGetApp().CallAfter([err]() {
+                        wxMessageBox(wxString::FromUTF8(err),
+                                     _L("OnShape Export Error"), wxOK | wxICON_ERROR);
+                    });
+                }
+            );
+        });
+    }
+    // Position picker below the action button if available, otherwise at mouse position
+    wxPoint pos;
+    if (m_btn_add_part) {
+        pos = m_btn_add_part->GetScreenPosition();
+        pos.y += m_btn_add_part->GetSize().GetHeight();
+    } else {
+        pos = wxGetMousePosition();
+    }
+    m_onshape_picker->ShowAt(pos);
 }
 
 

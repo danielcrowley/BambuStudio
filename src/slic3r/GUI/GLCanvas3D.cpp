@@ -6994,12 +6994,36 @@ bool GLCanvas3D::_init_main_toolbar()
         item.icon_filename_callback = [](bool is_dark_mode)->std::string {
             return is_dark_mode ? "toolbar_open_dark.svg" : "toolbar_open.svg";
             };
-        item.tooltip = _utf8(L("Add")) + " [" + GUI::shortkey_ctrl_prefix() + "I]";
+        item.tooltip = _utf8(L("Add")) + " [" + GUI::shortkey_ctrl_prefix() + "I]\n" +
+                       _utf8(L("Right-click for more options (OnShape\u2026)"));
         item.sprite_id = sprite_id++;
         item.left.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_ADD)); };
+        item.right.action_callback = [this]() {
+            if (m_canvas == nullptr) return;
+            // Show a source-selection menu for the Add action
+            wxMenu menu;
+            menu.Append(wxID_ANY, _L("From disk\tCtrl+I"));
+            menu.Append(wxID_ANY, _L("From OnShape\u2026"));
+            auto items = menu.GetMenuItems();
+            int disk_id    = items[0]->GetId();
+            int onshape_id = items[1]->GetId();
+            menu.Bind(wxEVT_MENU, [disk_id, onshape_id](wxCommandEvent& e) {
+                if (e.GetId() == disk_id) {
+                    wxGetApp().app_config->set("onshape_add_part_last_source", "disk");
+                    wxGetApp().plater()->add_file();
+                } else if (e.GetId() == onshape_id) {
+                    wxGetApp().app_config->set("onshape_add_part_last_source", "onshape");
+                    if (wxGetApp().mainframe)
+                        wxGetApp().mainframe->trigger_add_from_onshape();
+                }
+            });
+            m_canvas->PopupMenu(&menu);
+        };
         item.enabling_callback = []()->bool {return wxGetApp().plater()->can_add_model(); };
         if (!p_main_toolbar->add_item(item))
             return false;
+        // Reset right callback so subsequent items don't inherit it
+        item.right.action_callback = GLToolbarItem::Default_Action_Callback;
 
         item.name = "addplate";
         item.icon_filename_callback = [](bool is_dark_mode)->std::string {

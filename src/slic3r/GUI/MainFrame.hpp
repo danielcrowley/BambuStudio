@@ -35,6 +35,7 @@
 #include "PrinterWebView.hpp"
 #include "calib_dlg.hpp"
 #include "MultiMachinePage.hpp"
+#include "OnShapePartPicker.hpp"
 
 #define ENABEL_PRINT_ALL 0
 
@@ -406,6 +407,12 @@ public:
 
     wxStaticBitmap* split_line_icon{nullptr};
     ExpandButtonHolder* expand_program_holder{nullptr};
+
+    // OnShape integration — split-button state
+    wxBitmapButton*    m_btn_add_part          {nullptr};
+    wxBitmapButton*    m_btn_add_part_dropdown {nullptr};
+    OnShapePartPicker* m_onshape_picker        {nullptr};
+    void trigger_add_from_onshape();
 
     SidePopup*  m_slice_option_pop_up{ nullptr };
 
