@@ -1463,7 +1463,7 @@ wxWindow* PreferencesDialog::create_general_page()
         row->Add(lbl, 0, wxALIGN_CENTER | wxALL, 3);
         auto* txt = new wxTextCtrl(page, wxID_ANY,
             wxString::FromUTF8(app_config->get("onshape_secret_key")),
-            wxDefaultPosition, DESIGN_INPUT_SIZE, wxTE_PASSWORD);
+            wxDefaultPosition, DESIGN_INPUT_SIZE, wxTE_PASSWORD | wxTE_PROCESS_ENTER);
         txt->Bind(wxEVT_KILL_FOCUS, [this, txt](wxFocusEvent& e) {
             app_config->set("onshape_secret_key", txt->GetValue().ToUTF8().data());
             app_config->save();
