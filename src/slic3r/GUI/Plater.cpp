@@ -5,8 +5,10 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <map>
 #include <regex>
 #include <future>
+#include <thread>
 #include <boost/algorithm/string.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/path.hpp>
@@ -8888,6 +8890,38 @@ void Plater::priv::reload_all_from_disk()
     }
 }
 
+static void upload_onshape_attachments(const std::string& file_path, const Slic3r::Model& model)
+{
+    // Collect unique (docId -> workspaceId) pairs from all objects
+    std::map<std::string, std::string> docs;
+    for (const Slic3r::ModelObject* obj : model.objects) {
+        if (obj->onshape_source.has_value()) {
+            docs[obj->onshape_source->doc_id] = obj->onshape_source->workspace_id;
+        }
+    }
+    if (docs.empty()) return;
+
+    for (const auto& [doc_id, workspace_id] : docs) {
+        Slic3r::OnShape::uploadAttachment(doc_id, workspace_id, file_path,
+            [doc_id](bool ok, std::string err) {
+                wxGetApp().CallAfter([ok, doc_id, err]() {
+                    if (ok) {
+                        wxGetApp().plater()->get_notification_manager()
+                            ->push_notification(
+                                NotificationType::CustomNotification,
+                                NotificationManager::NotificationLevel::RegularNotificationLevel,
+                                _u8L("3MF uploaded to OnShape document."));
+                    } else {
+                        wxGetApp().plater()->get_notification_manager()
+                            ->push_plater_error_notification(
+                                _u8L("Failed to upload 3MF to OnShape: ") + err);
+                    }
+                });
+            }
+        );
+    }
+}
+
 void Plater::priv::reload_from_onshape()
 {
     // Find the selected object with OnShape metadata
@@ -14645,6 +14679,8 @@ int Plater::save_project(bool saveAs)
             _L("Save project"), wxOK | wxICON_WARNING).ShowModal();
         return wxID_CANCEL;
     }
+
+    upload_onshape_attachments(into_u8(filename), p->model);
 
     Slic3r::remove_backup(model(), false);
 
