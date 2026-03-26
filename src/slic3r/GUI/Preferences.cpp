@@ -1418,6 +1418,44 @@ wxWindow* PreferencesDialog::create_general_page()
     auto title_media = create_item_title(_L("Media"), page, _L("Media"));
     auto item_auto_stop_liveview = create_item_checkbox(_L("Keep liveview when printing."), page, _L("By default, Liveview will pause after 15 minutes of inactivity on the computer. Check this box to disable this feature during printing."), 50, "auto_stop_liveview");
 
+    auto title_onshape = create_item_title(_L("OnShape Integration"), page, "");
+    auto item_onshape_access_key = create_item_input(
+        _L("OnShape Access Key"), "", page,
+        _L("Your OnShape API Access Key from onshape.com/go/api-keys"),
+        "onshape_access_key",
+        [](wxString) {}
+    );
+
+    // Secret Key — must be password-masked (wxTE_PASSWORD).
+    // create_item_input() doesn't support wxTE_PASSWORD, so build manually.
+    // Mirror the layout of create_item_input: left-indent + label + TextCtrl.
+    wxBoxSizer* item_onshape_secret_key = nullptr;
+    {
+        wxBoxSizer* row = new wxBoxSizer(wxHORIZONTAL);
+        row->Add(0, 0, 0, wxEXPAND | wxLEFT, 23);
+        auto* lbl = new wxStaticText(page, wxID_ANY, _L("OnShape Secret Key"));
+        lbl->SetForegroundColour(DESIGN_GRAY900_COLOR);
+        lbl->SetFont(::Label::Body_13);
+        lbl->SetToolTip(_L("Your OnShape API Secret Key from onshape.com/go/api-keys"));
+        lbl->Wrap(-1);
+        row->Add(lbl, 0, wxALIGN_CENTER | wxALL, 3);
+        auto* txt = new wxTextCtrl(page, wxID_ANY,
+            wxString::FromUTF8(app_config->get("onshape_secret_key")),
+            wxDefaultPosition, DESIGN_INPUT_SIZE, wxTE_PASSWORD);
+        txt->Bind(wxEVT_KILL_FOCUS, [this, txt](wxFocusEvent& e) {
+            app_config->set("onshape_secret_key", txt->GetValue().ToUTF8().data());
+            app_config->save();
+            e.Skip();
+        });
+        txt->Bind(wxEVT_TEXT_ENTER, [this, txt](wxCommandEvent& e) {
+            app_config->set("onshape_secret_key", txt->GetValue().ToUTF8().data());
+            app_config->save();
+            e.Skip();
+        });
+        row->Add(txt, 1, wxALIGN_CENTER | wxALL, 3);
+        item_onshape_secret_key = row;
+    }
+
     //dark mode
 #ifdef _WIN32
     auto title_darkmode = create_item_title(_L("Dark Mode"), page, _L("Dark Mode"));
@@ -1520,6 +1558,10 @@ wxWindow* PreferencesDialog::create_general_page()
 
     sizer_page->Add(title_media, 0, wxTOP| wxEXPAND, FromDIP(20));
     sizer_page->Add(item_auto_stop_liveview, 0, wxEXPAND, FromDIP(3));
+
+    sizer_page->Add(title_onshape, 0, wxTOP | wxEXPAND, FromDIP(20));
+    sizer_page->Add(item_onshape_access_key, 0, wxTOP, FromDIP(3));
+    sizer_page->Add(item_onshape_secret_key, 0, wxTOP, FromDIP(3));
 
 #ifdef _WIN32
     sizer_page->Add(title_darkmode, 0, wxTOP | wxEXPAND, FromDIP(20));
