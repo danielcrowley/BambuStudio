@@ -1753,7 +1753,6 @@ wxMenu* MenuFactory::multi_selection_menu()
         //BBS
         append_menu_item_change_filament(menu);
         append_menu_item_reload_from_disk(menu);
-        append_menu_item_reload_from_onshape(menu);
         menu->AppendSeparator();
         append_menu_item_export_stl(menu, true);
     }
@@ -1772,7 +1771,6 @@ wxMenu* MenuFactory::multi_selection_menu()
         append_menu_items_convert_unit(menu);
         append_menu_item_change_filament(menu);
         append_menu_item_reload_from_disk(menu);
-        append_menu_item_reload_from_onshape(menu);
         wxMenu* split_menu = new wxMenu();
         if (split_menu) {
             append_menu_item(split_menu, wxID_ANY, _L("To objects"), _L("Split the selected object into multiple objects"),

@@ -8900,6 +8900,8 @@ void Plater::priv::reload_from_onshape()
     if (o_idx < 0 || o_idx >= (int)model.objects.size()) return;
 
     ModelObject* obj = model.objects[o_idx];
+    // onshape_source is per-object (not per-volume); all volumes in this
+    // object share the same OnShape origin.
     if (!obj->onshape_source.has_value()) return;
 
     OnShapePart part;
@@ -8917,6 +8919,9 @@ void Plater::priv::reload_from_onshape()
     OnShape::exportPart(part, tmp_str,
         [this, o_idx, vol_idx, tmp](std::string path) {
             wxGetApp().CallAfter([this, o_idx, vol_idx, path, tmp]() {
+                if (o_idx >= (int)model.objects.size()) return;
+                if (vol_idx >= (int)model.objects[o_idx]->volumes.size()) return;
+
                 // Take snapshot for undo before modifying
                 Plater::TakeSnapshot snapshot(q, "Reload from OnShape");
 
