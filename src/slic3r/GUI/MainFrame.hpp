@@ -16,6 +16,8 @@
 #include <string>
 #include <map>
 
+#include <wx/weakref.h>
+
 #include "GUI_Utils.hpp"
 #include "Event.hpp"
 //BBS: GUI refactor
@@ -408,10 +410,8 @@ public:
     wxStaticBitmap* split_line_icon{nullptr};
     ExpandButtonHolder* expand_program_holder{nullptr};
 
-    // OnShape integration — split-button state
-    wxBitmapButton*    m_btn_add_part          {nullptr};
-    wxBitmapButton*    m_btn_add_part_dropdown {nullptr};
-    OnShapePartPicker* m_onshape_picker        {nullptr};
+    // OnShape integration
+    wxWeakRef<OnShapePartPicker> m_onshape_picker;
     void trigger_add_from_onshape();
 
     SidePopup*  m_slice_option_pop_up{ nullptr };

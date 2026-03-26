@@ -1,5 +1,6 @@
 #include "MainFrame.hpp"
 #include "GLToolbar.hpp"
+#include <wx/weakref.h>
 #include <wx/panel.h>
 #include <wx/notebook.h>
 #include <wx/listbook.h>
@@ -4381,22 +4382,28 @@ void MainFrame::trigger_add_from_onshape()
 {
     if (!m_onshape_picker) {
         m_onshape_picker = new OnShapePartPicker(this, [this](OnShapePart part) {
+            // Use a unique temp path to avoid filename collisions and invalid chars
             auto tmp = boost::filesystem::temp_directory_path()
-                     / (part.part_id + ".3mf");
+                     / boost::filesystem::unique_path("onshape_%%%%-%%%%-%%%%.3mf");
             OnShape::exportPart(part, tmp.string(),
                 [this, part, tmp](std::string path) {
                     wxGetApp().CallAfter([this, path, part, tmp]() {
                         std::vector<boost::filesystem::path> files = {
                             boost::filesystem::path(path)
                         };
-                        m_plater->load_files(files, LoadStrategy::LoadModel, false);
-                        // Tag the newly loaded object with OnShape metadata
-                        if (!m_plater->model().objects.empty()) {
-                            auto* obj = m_plater->model().objects.back();
-                            obj->onshape_source = OnShapeMetadata{
-                                part.doc_id, part.workspace_id,
-                                part.element_id, part.part_id, part.part_name
-                            };
+                        auto new_idxs = m_plater->load_files(files, LoadStrategy::LoadModel, false);
+                        // Tag each newly loaded object with OnShape metadata
+                        for (size_t idx : new_idxs) {
+                            if (idx < m_plater->model().objects.size()) {
+                                m_plater->model().objects[idx]->onshape_source = OnShapeMetadata{
+                                    part.doc_id, part.workspace_id,
+                                    part.element_id, part.part_id, part.part_name
+                                };
+                            }
+                        }
+                        // Persist the preferred source only after a successful import
+                        if (!new_idxs.empty()) {
+                            wxGetApp().app_config->set("onshape_add_part_last_source", "onshape");
                         }
                         boost::filesystem::remove(boost::filesystem::path(path));
                     });
@@ -4410,14 +4417,8 @@ void MainFrame::trigger_add_from_onshape()
             );
         });
     }
-    // Position picker below the action button if available, otherwise at mouse position
-    wxPoint pos;
-    if (m_btn_add_part) {
-        pos = m_btn_add_part->GetScreenPosition();
-        pos.y += m_btn_add_part->GetSize().GetHeight();
-    } else {
-        pos = wxGetMousePosition();
-    }
+    // Position picker at mouse position
+    wxPoint pos = wxGetMousePosition();
     m_onshape_picker->ShowAt(pos);
 }
 

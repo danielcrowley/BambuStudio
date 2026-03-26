@@ -7002,7 +7002,7 @@ bool GLCanvas3D::_init_main_toolbar()
             if (m_canvas == nullptr) return;
             // Show a source-selection menu for the Add action
             wxMenu menu;
-            menu.Append(wxID_ANY, _L("From disk\tCtrl+I"));
+            menu.Append(wxID_ANY, _L("From disk") + "  (Ctrl+I)");
             menu.Append(wxID_ANY, _L("From OnShape\u2026"));
             auto items = menu.GetMenuItems();
             int disk_id    = items[0]->GetId();
@@ -7012,7 +7012,6 @@ bool GLCanvas3D::_init_main_toolbar()
                     wxGetApp().app_config->set("onshape_add_part_last_source", "disk");
                     wxGetApp().plater()->add_file();
                 } else if (e.GetId() == onshape_id) {
-                    wxGetApp().app_config->set("onshape_add_part_last_source", "onshape");
                     if (wxGetApp().mainframe)
                         wxGetApp().mainframe->trigger_add_from_onshape();
                 }
