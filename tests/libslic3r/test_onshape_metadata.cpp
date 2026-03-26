@@ -74,16 +74,19 @@ SCENARIO("OnShape metadata survives 3MF roundtrip", "[onshape][3mf]") {
             DynamicPrintConfig config;
             store_params.config = &config;
             store_params.strategy = SaveStrategy::Zip64;
-            store_bbs_3mf(store_params);
+            bool save_ok2 = store_bbs_3mf(store_params);
+            REQUIRE(save_ok2);
 
             Model loaded_model;
             DynamicPrintConfig loaded_config;
             ConfigSubstitutionContext ctxt{ForwardCompatibilitySubstitutionRule::Disable};
             bool is_bbl_3mf = false;
             Semver file_version;
-            load_bbs_3mf(tmp.string().c_str(), &loaded_config, &ctxt,
-                         &loaded_model, nullptr, nullptr,
-                         &is_bbl_3mf, &file_version);
+            bool load_ok2 = load_bbs_3mf(tmp.string().c_str(), &loaded_config, &ctxt,
+                                         &loaded_model, nullptr, nullptr,
+                                         &is_bbl_3mf, &file_version);
+            REQUIRE(load_ok2);
+            REQUIRE(!loaded_model.objects.empty());
 
             THEN("onshape_source is empty") {
                 REQUIRE(!loaded_model.objects.front()->onshape_source.has_value());
