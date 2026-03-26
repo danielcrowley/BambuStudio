@@ -337,6 +337,19 @@ enum class ModelObjectCutAttribute : int { KeepUpper, KeepLower, FlipUpper, Flip
 using ModelObjectCutAttributes = enum_bitmask<ModelObjectCutAttribute>;
 ENABLE_ENUM_BITMASK_OPERATORS(ModelObjectCutAttribute);
 
+struct OnShapeMetadata {
+    std::string doc_id;
+    std::string workspace_id;
+    std::string element_id;
+    std::string part_id;
+    std::string part_name;
+
+    bool is_valid() const {
+        return !doc_id.empty() && !workspace_id.empty() &&
+               !element_id.empty() && !part_id.empty();
+    }
+};
+
 // A printable object, possibly having multiple print volumes (each with its own set of parameters and materials),
 // and possibly having multiple modifier volumes, each modifier volume with its set of parameters and materials.
 // Each ModelObject may be instantiated mutliple times, each instance having different placement on the print bed,
@@ -348,6 +361,8 @@ public:
     //BBS: add module name for assemble
     std::string             module_name;
     std::string             input_file;    // XXX: consider fs::path
+    // OnShape source tracking — populated when part was imported from OnShape
+    std::optional<OnShapeMetadata> onshape_source;
     // Instances of this ModelObject. Each instance defines a shift on the print bed, rotation around the Z axis and a uniform scaling.
     // Instances are owned by this ModelObject.
     ModelInstancePtrs       instances;
