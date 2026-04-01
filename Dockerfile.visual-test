@@ -1,0 +1,40 @@
+# Dockerfile.visual-test
+# Extends the BambuStudio Linux build image with an Xvfb-based visual test
+# runner.  Build the main image first, then build this one:
+#
+#   docker build -t bambustudio-linux .
+#   docker build -f Dockerfile.visual-test -t bambustudio-visual-test .
+#   docker run --rm -v "$(pwd)/visual-test-results:/results" bambustudio-visual-test
+#
+# Set UPDATE_BASELINE=1 to regenerate baselines:
+#   docker run --rm -e UPDATE_BASELINE=1 \
+#       -v "$(pwd)/tests/visual/baseline:/tests/visual/baseline" \
+#       bambustudio-visual-test
+
+FROM bambustudio-linux
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        imagemagick \
+        libgl1-mesa-dri \
+        mesa-utils \
+        python3-pil \
+        python3-pytesseract \
+        python3-xlib \
+        scrot \
+        tesseract-ocr \
+        x11-utils \
+        xdotool \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy test scripts and any committed baselines
+COPY tests/visual/ /tests/visual/
+RUN chmod +x /tests/visual/run_visual_tests.sh
+
+RUN mkdir -p /results
+
+ENV RESULTS_DIR=/results \
+    TIMEOUT=45
+
+ENTRYPOINT ["/tests/visual/run_visual_tests.sh"]
